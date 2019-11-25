@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <title>Finstagram</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <style>
+            .photoItem img {
+                display: block;
+                margin: auto;
+                max-width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="py-5">Image Gallery</h1>
+            <div class="row">
+                <div class="col-6" style="margin: auto;">
+                    {% for image in images | sort(attribute='postingdate', reverse = True) %}
+                        <div class="photoItem">
+                            <img src="/image/{{image.filepath}}"/>
+                            <div class="row">
+                                <div class="col-6">
+                                    <p>ID: {{image.photoID}}</p>
+                                    <p>Photo Poster: {{image.photoPoster}}</p>
+                                </div>
+                                <div class="col-6" style="text-align: right;">
+                                    <a href="/more-info/{{image.photoPoster}}/{{image.photoID}}">More info</a>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                    {% endfor %}
+                </div>
+            </div>
+            <a class="py-5" href="/">Go back</a>
+        </div>
+    </body>
+</html>

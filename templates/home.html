@@ -1,0 +1,86 @@
+<html>
+    <head>
+        <title>Finstagram</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="container">
+            <div class="row py-5">
+                <div class="col-6">
+                    <h1>Hello, {{ username }}!</h1>
+                </div>
+                <div class="col-6" style="text-align: right;">
+                    <div class="py-3">
+                        <a href="/logout">Logout</a>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-8">
+                    <div>
+                        <a href="/images">View Images</a>
+                    </div>
+                    <div>
+                        <a href="/upload">Upload an Image</a>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <h4>Request Follow</h4>
+                    <form action="/requestFollow" method="post">
+                        <input type="text" name="username" class="mb-2">
+                        <br>
+                        <input type="submit" value="Follow">
+                        {% if followMsg %}
+                            {{ followMsg }}
+                        {% endif %}
+                    </form>
+                    <hr>
+                    <h4>Current Following</h4>
+                    {% for follow in currentFollowers %}
+                    <div class="row">
+                        <div class="col-6">
+                            {% if follow.username_follower != username %}
+                            <p>{{follow.username_follower}}</p>
+                            {% else %}
+                            <p>{{follow.username_followed}}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-6" style="text-align: right;">
+                            {% if follow.username_follower != username %}
+                            <form action="/declineFollow/{{follow.username_follower}}" method="post">
+                            {% else %}
+                            <form action="/declineFollow/{{follow.username_followed}}" method="post">
+                            {% endif %}
+                                <input type="submit" value="Unfollow"/>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <hr>
+                    <h4>Follow Pending Approval</h4>
+                    {% for follow in pendingFollowRequests | sort(attribute='username_follower') %}
+                    <div class="row">
+                        <div class="col-6">
+                            <p>{{follow.username_follower}}</p>
+                        </div>
+                        <div class="col-6" style="text-align: right;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <form action="/acceptFollow/{{follow.username_follower}}" method="post">
+                                        <input type="submit" value="Accept"/>
+                                    </form>
+                                </div>
+                                <div class="col-6">
+                                    <form action="/declineFollow/{{follow.username_follower}}" method="post">
+                                        <input type="submit" value="Decline"/>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

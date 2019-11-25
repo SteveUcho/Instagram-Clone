@@ -1,0 +1,63 @@
+<html>
+    <head>
+        <title>Finstagram</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <style>
+            .photoItem img {
+                display: block;
+                margin: auto;
+                max-width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            {% set list1 = image.filepath.split('.') %}
+            <h1 class="py-5">{{list1[0]}}</h1>
+            <div class="row">
+                <div class="photoItem col-6" style="margin: auto;">
+                    <img src="/image/{{image.filepath}}"/>
+                    <div class="row">
+                        <div class="col-6">
+                            <p>ID: {{image.photoID}}</p>
+                            <p>Photo Poster: {{image.photoPoster}}</p>
+                        </div>
+                        <div class="col-md-6" style="text-align: right;">
+                            <p>{{image.postingdate}}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <h4>Tagged</h4>
+                            {% for tag in moreInfoData.tagged | sort(attribute='username') %}
+                            <div class="row">
+                                <div class="col-6">
+                                    <p>Username: {{tag.username}}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p>First Name: {{tag.firstName}}</p>
+                                    <p>Last Name: {{tag.lastName}}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-6">
+                            <h4>Likes</h4>
+                            {% for like in moreInfoData.likes | sort(attribute='username') %}
+                            <div class="row">
+                                <div class="col-6">
+                                    <p>Username: {{like.username}}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p>Rating: {{like.rating}}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <a class="py-5" href="/images">Go back</a>
+        </div>
+    </body>
+</html>
