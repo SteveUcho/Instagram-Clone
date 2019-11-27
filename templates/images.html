@@ -14,7 +14,7 @@
         <div class="container">
             <h1 class="py-5">Image Gallery</h1>
             <div class="row">
-                <div class="col-6" style="margin: auto;">
+                <div class="col-6" style="margin-left: auto;">
                     {% for image in images | sort(attribute='postingdate', reverse = True) %}
                         <div class="photoItem">
                             <img src="/image/{{image.filepath}}"/>
@@ -24,11 +24,40 @@
                                     <p>Photo Poster: {{image.photoPoster}}</p>
                                 </div>
                                 <div class="col-6" style="text-align: right;">
-                                    <a href="/more-info/{{image.photoPoster}}/{{image.photoID}}">More info</a>
+                                    <a href="/more-info/{{image.photoPoster}}/{{image.photoID}}">More info / Tags / Likes</a>
                                 </div>
                             </div>
                         </div>
                         <hr>
+                    {% endfor %}
+                </div>
+                <div class="col-3" style="margin-right: auto;">
+                    <h4>Pending Tags</h4>
+                    {% if not pendingTags %}
+                    <hr>
+                        <p>No tags pending approval</p>
+                    {% endif %}
+                    {% for tag in pendingTags %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            <p>{{tag.photoID}}</p>
+                        </div>
+                        <div class="col-6" style="text-align: right;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <form action="/acceptTag/{{tag.photoID}}" method="post">
+                                        <input type="submit" value="Accept"/>
+                                    </form>
+                                </div>
+                                <div class="col-6">
+                                    <form action="/declineTag/{{tag.photoID}}" method="post">
+                                        <input type="submit" value="Decline"/>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
             </div>

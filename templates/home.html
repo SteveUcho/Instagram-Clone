@@ -36,6 +36,9 @@
                     </form>
                     <hr>
                     <h4>Current Following</h4>
+                    {% if not currentFollowers %}
+                        <p>No followers</p>
+                    {% endif %}
                     {% for follow in currentFollowers %}
                     <div class="row">
                         <div class="col-6">

@@ -26,16 +26,32 @@
                             <p>{{image.postingdate}}</p>
                         </div>
                     </div>
+                    <hr>
                     <div class="row">
                         <div class="col-6">
                             <h4>Tagged</h4>
+                            <p>Tag person</p>
+                            <form action="/tag" method="post" class="form-inline">
+                                <input type="text" name="username" placeholder="Username" style="max-width: 65%;" required/>
+                                <input type="hidden" name="photoID" value="{{image.photoID}}">
+                                <input type="submit" value="Tag">
+                            </form>
+                            {% if tagMsg %}
+                            <p style="color: coral;">{{tagMsg}}</p>
+                            {% endif %}
                             {% for tag in moreInfoData.tagged | sort(attribute='username') %}
+                            <hr>
                             <div class="row">
                                 <div class="col-6">
                                     <p>Username: {{tag.username}}</p>
+                                    <br>
+                                    {% if tag.tagstatus == "0" %}
+                                    <p style="color: coral;">Pending</p>
+                                    {% endif %}
                                 </div>
                                 <div class="col-6">
                                     <p>First Name: {{tag.firstName}}</p>
+                                    <br>
                                     <p>Last Name: {{tag.lastName}}</p>
                                 </div>
                             </div>

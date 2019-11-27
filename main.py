@@ -35,48 +35,62 @@ def index():
         return redirect(url_for("home"))
     return render_template("index.html")
 
+# Get current followers and pending followers data, send it to home.html
 @app.route("/home")
 @login_required
 def home(followMsg=False, errorMsg=False):
     with connection.cursor() as cursor:
+        # get pending followers
         query = "SELECT * FROM follow WHERE username_followed = %s AND followStatus = 0"
         cursor.execute(query, (session["username"]))
         pendingFollowRequests = cursor.fetchall()
+        # get current followers
         query = "SELECT * FROM follow WHERE (username_follower = %s OR username_followed = %s) AND followStatus = 1"
         cursor.execute(query, (session["username"], session["username"]))
         currentFollowers = cursor.fetchall()
     return render_template("home.html", username=session["username"], currentFollowers=currentFollowers, pendingFollowRequests=pendingFollowRequests, followMsg=followMsg, errorMsg=errorMsg)
 
+# this route is invoked when the request follow form is filled out and sent
+# We must check if the username exists first
+# Then we check if a request has already been sent, if a request exists, let the user know
+# if no request has been sent to this user yet, then send it 
 @app.route("/requestFollow", methods=["POST"])
 @login_required
 def requestFollow():
     if request.form:
         username = request.form.get("username")
         with connection.cursor() as cursor:
+            # check if user exists
             query = "SELECT * FROM person WHERE username = %s"
             cursor.execute(query, (username))
         data = cursor.fetchone()
         if data:
             with connection.cursor() as cursor:
+                # check if request has been sent before
                 query = "SELECT * FROM follow WHERE (username_follower = %s AND username_followed = %s) OR (username_followed = %s AND username_follower = %s)"
                 cursor.execute(query, (username, session["username"], username, session["username"]))
             data = cursor.fetchone()
             if not data:
                 with connection.cursor() as cursor:
+                    # send request
                     query = "INSERT INTO follow (username_followed, username_follower, followstatus) VALUES (%s, %s, %s)"
                     cursor.execute(query, (username, session["username"], 0))
                 followMsg = "Follow request sent"
                 return home(followMsg=followMsg)
             else:
+                # let the user know he/she has already sent a request
                 error = "Request to %s already sent" % (username)
                 return home(followMsg=error)
         else:
+            # let the user know the user does not exists
             followMsg = "Username does not exist"
             return home(followMsg=followMsg)
 
     error = "An unknown error has occurred. Please try again."
     return home(errorMsg=error)
 
+# update the follow table with the follow status 1
+# this route is invoked when a user clicks the accept button on the pending follow
 @app.route("/acceptFollow/<usernameFollower>", methods=["POST"])
 @login_required
 def acceptFollow(usernameFollower):
@@ -85,6 +99,8 @@ def acceptFollow(usernameFollower):
         cursor.execute(query, (usernameFollower, session["username"]))
     return redirect(url_for("home"))
 
+# this route is invoked when a user clicks the decline button on the pending follow
+# serves as a decline follow but also as an unfollow, as it deletes the table entry in its entirety
 @app.route("/declineFollow/<usernameFollower>", methods=["POST"])
 @login_required
 def declineFollow(usernameFollower):
@@ -98,14 +114,46 @@ def declineFollow(usernameFollower):
 def upload():
     return render_template("upload.html")
 
+# gets images visible to the user.
 @app.route("/images", methods=["GET"])
 @login_required
 def images():
-    query = "SELECT * FROM photo"
+    query = ("SELECT * "
+            "FROM photo AS p1 "
+            "WHERE photoPoster = %s "
+            "OR ( "
+                "p1.allFollowers = 1 "
+                "AND EXISTS ( "
+                            "SELECT * "
+                            "FROM follow "
+                            "WHERE follow.username_followed = p1.photoPoster "
+                            "AND follow.username_follower = %s "
+                            "AND followstatus = 1) "
+                "OR EXISTS ( "
+                            "SELECT * "
+                            "FROM follow "
+                            "WHERE follow.username_follower = p1.photoPoster "
+                            "AND follow.username_followed = %s "
+                            "AND followstatus = 1) "
+                ") "
+            "OR p1.photoID IN ( "
+                        "SELECT photoID "
+                        "FROM sharedWith as s1 "
+                        "WHERE photoID = %s "
+                        "AND (groupOwner, groupName) IN ( "
+                                                        "SELECT groupOwner, groupName "
+                                                        "FROM belongTo "
+                                                        "WHERE member_username = %s "
+                                                        ") "
+                        ") "
+            )
     with connection.cursor() as cursor:
-        cursor.execute(query)
-    data = cursor.fetchall()
-    return render_template("images.html", images=data)
+        cursor.execute(query, (session["username"], session["username"], session["username"]))
+        images = cursor.fetchall()
+        query = "SELECT * FROM tagged WHERE username = %s AND tagstatus = 0"
+        cursor.execute(query, (session["username"]))
+        pendingTags = cursor.fetchall()
+    return render_template("images.html", images=images, pendingTags=pendingTags)
 
 @app.route("/image/<image_name>", methods=["GET"])
 @login_required
@@ -116,15 +164,14 @@ def image(image_name):
 
 @app.route("/more-info/<username>/<photoID>", methods=["GET"])
 @login_required
-def moreInfo(username, photoID):
+def moreInfo(username, photoID, tagMsg=False):
     moreInfoData = {
         "firstName": "",
         "lastName": "",
-        "timeStamp": "",
         "tagged": [],
         "likes": []
     }
-    photoID = int(photoID)
+    print(photoID)
     with connection.cursor() as cursor:
         query = "SELECT * FROM person WHERE username = %s"
         cursor.execute(query, (username))
@@ -132,21 +179,85 @@ def moreInfo(username, photoID):
         moreInfoData["firstName"] = data["firstName"]
         moreInfoData["lastName"] = data["lastName"]
 
-        query = "SELECT username, firstName, LastName FROM tagged NATURAL JOIN person WHERE photoID = %s AND tagstatus = 1"
+        query = "SELECT username, firstName, lastName FROM tagged NATURAL JOIN person WHERE photoID = %s AND tagstatus = 1"
         cursor.execute(query, (photoID))
-        data = cursor.fetchall()
-        moreInfoData["tagged"] = data
+        moreInfoData["tagged"] = cursor.fetchall()
 
         query = "SELECT username, rating FROM likes WHERE photoID = %s"
         cursor.execute(query, (photoID))
-        data = cursor.fetchall()
-        moreInfoData["liked"] = data
+        moreInfoData["likes"] = cursor.fetchall()
 
         query = "SELECT * FROM photo WHERE photoID = %s"
         cursor.execute(query, (photoID))
-    imageInQuestion = cursor.fetchone()
-    return render_template("more-info.html", moreInfoData=moreInfoData, image=imageInQuestion)
+        imageInQuestion = cursor.fetchone()
+    print(moreInfoData)
+    return render_template("more-info.html", moreInfoData=moreInfoData, image=imageInQuestion, tagMsg=tagMsg)
         
+@app.route("/tag", methods=["POST"])
+def tag():
+    if request.form:
+        requestData = request.form
+        username = requestData["username"]
+        photoID = requestData["photoID"]
+        with connection.cursor() as cursor:
+            query = "SELECT * FROM person WHERE username = %s"
+            cursor.execute(query, (username))
+            data = cursor.fetchone()
+            if not data:
+                tagMsg = "User does not exist"
+                return moreInfo(username, photoID, tagMsg=tagMsg)
+            if username == session["username"]:
+                try:
+                    query = "INSERT INTO tagged (username, photoID, tagstatus) VALUES (%s, %s, %s)"
+                    cursor.execute(query, (username, photoID, 1))
+                    tagMsg = "Tag set"
+                    return moreInfo(username, photoID, tagMsg=tagMsg)
+                except pymysql.err.IntegrityError:
+                    error = "%s is already tagged." % (username)
+                    return moreInfo(username, photoID, tagMsg=error)
+            else:
+                query = ("SELECT * "
+                        "FROM photo AS p1 "
+                        "WHERE photoID = %s "
+                        "AND ( EXISTS ( "
+                                        "SELECT * "
+                                        "FROM follow "
+                                        "WHERE follow.username_followed = p1.photoPoster "
+                                        "AND follow.username_follower = %s "
+                                        "AND followstatus = 1) "
+                            "OR EXISTS ( "
+                                        "SELECT * "
+                                        "FROM follow "
+                                        "WHERE follow.username_follower = p1.photoPoster "
+                                        "AND follow.username_followed = %s "
+                                        "AND followstatus = 1) "
+                            ")")
+                cursor.execute(query, (photoID, username, username))
+                data = cursor.fetchone()
+                if data:
+                    query = "INSERT INTO tagged (username, photoID, tagstatus) VALUES (%s, %s, %s)"
+                    cursor.execute(query, (username, photoID, 0))
+                    tagMsg = "Tag pending approval"
+                    return moreInfo(username, photoID, tagMsg=tagMsg)
+                else:
+                    tagMsg = "Photo not visible to Taggee"
+                    return moreInfo(username, photoID, tagMsg=tagMsg)
+
+@app.route("/acceptTag/<photoID>", methods=["POST"])
+def acceptTag(photoID):
+    with connection.cursor() as cursor:
+        query = "UPDATE tagged SET tagstatus = 1 WHERE username = %s AND photoID = %s"
+        cursor.execute(query, (session["username"], photoID))
+    return images()
+
+# serves as a decline follow but also as an unfollow, as it deletes the table entry in its entirety
+@app.route("/declineTag/<photoID>", methods=["POST"])
+@login_required
+def declineTag(photoID):
+    with connection.cursor() as cursor:
+        query = "DELETE FROM tagged WHERE (username = %s AND photoID = %s)"
+        cursor.execute(query, (session["username"], photoID))
+    return images()
 
 @app.route("/login", methods=["GET"])
 def login():
