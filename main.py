@@ -14,7 +14,7 @@ SALT = "cs3083"
 
 connection = pymysql.connect(host="127.0.0.1",
                              user="root",
-                             password="Mach-3F-35C",
+                             password="",
                              db="finstagram",
                              charset="utf8mb4",
                              port=3306,
