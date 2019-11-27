@@ -136,10 +136,10 @@ def images():
                             "AND follow.username_followed = %s "
                             "AND followstatus = 1) "
                 ") "
-            "OR p1.photoID IN ( "
-                        "SELECT photoID "
+            "OR EXISTS ( "
+                        "SELECT * "
                         "FROM sharedWith as s1 "
-                        "WHERE photoID = %s "
+                        "WHERE photoID = p1.photoID "
                         "AND (groupOwner, groupName) IN ( "
                                                         "SELECT groupOwner, groupName "
                                                         "FROM belongTo "
@@ -148,7 +148,7 @@ def images():
                         ") "
             )
     with connection.cursor() as cursor:
-        cursor.execute(query, (session["username"], session["username"], session["username"]))
+        cursor.execute(query, (session["username"], session["username"], session["username"], session["username"]))
         images = cursor.fetchall()
         query = "SELECT * FROM tagged WHERE username = %s AND tagstatus = 0"
         cursor.execute(query, (session["username"]))
@@ -225,14 +225,25 @@ def tag():
                                         "WHERE follow.username_followed = p1.photoPoster "
                                         "AND follow.username_follower = %s "
                                         "AND followstatus = 1) "
-                            "OR EXISTS ( "
-                                        "SELECT * "
-                                        "FROM follow "
-                                        "WHERE follow.username_follower = p1.photoPoster "
-                                        "AND follow.username_followed = %s "
-                                        "AND followstatus = 1) "
-                            ")")
-                cursor.execute(query, (photoID, username, username))
+                                "OR EXISTS ( "
+                                            "SELECT * "
+                                            "FROM follow "
+                                            "WHERE follow.username_follower = p1.photoPoster "
+                                            "AND follow.username_followed = %s "
+                                            "AND followstatus = 1) "
+                            ")"
+                        "OR EXISTS ( "
+                                    "SELECT * "
+                                    "FROM sharedWith as s1 "
+                                    "WHERE photoID = p1.photoID "
+                                    "AND (groupOwner, groupName) IN ( "
+                                                                    "SELECT groupOwner, groupName "
+                                                                    "FROM belongTo "
+                                                                    "WHERE member_username = %s "
+                                                                    ") "
+                                    ") "
+                        )
+                cursor.execute(query, (photoID, username, username, username))
                 data = cursor.fetchone()
                 if data:
                     query = "INSERT INTO tagged (username, photoID, tagstatus) VALUES (%s, %s, %s)"
